@@ -39,11 +39,17 @@ cp -v tmp/{ffmpeg,ffprobe,qt-faststart} /usr/local/bin
 rm -rf tmp ffmpeg-release-amd64-static.tar.xz
 echo "ffmpeg installed to /usr/local/bin"
 
-read -p "Enter portal URL, or press enter for localhost : " FRONTEND_HOST
-read -p "Enter portal name, or press enter for 'MediaCMS : " PORTAL_NAME
+INSTALLATION_DIR_DEFAULT='/home/mediacms.io'
+PORTAL_NAME_DEFAULT='MediaCMS'
+FRONTEND_HOST_DEFAULT='localhost'
 
-[ -z "$PORTAL_NAME" ] && PORTAL_NAME='MediaCMS'
-[ -z "$FRONTEND_HOST" ] && FRONTEND_HOST='localhost'
+read -p "Enter installtion folder, or press enter for ${INSTALLATION_DIR_DEFAULT} : " INSTALLATION_DIR
+read -p "Enter portal URL, or press enter for ${FRONTEND_HOST_DEFAULT} : " FRONTEND_HOST
+read -p "Enter portal name, or press enter for '${PORTAL_NAME_DEFAULT}' : " PORTAL_NAME
+
+[ -z "$INSTALLATION_DIR" ] && INSTALLATION_DIR=$INSTALLATION_DIR_DEFAULT
+[ -z "$PORTAL_NAME" ] && PORTAL_NAME=$PORTAL_NAME_DEFAULT
+[ -z "$FRONTEND_HOST" ] && FRONTEND_HOST=$FRONTEND_HOST_DEFAULT
 
 echo 'Creating database to be used in MediaCMS'
 
@@ -51,11 +57,12 @@ su -c "psql -c \"CREATE DATABASE mediacms\"" postgres
 su -c "psql -c \"CREATE USER mediacms WITH ENCRYPTED PASSWORD 'mediacms'\"" postgres
 su -c "psql -c \"GRANT ALL PRIVILEGES ON DATABASE mediacms TO mediacms\"" postgres
 
-echo 'Creating python virtualenv on /home/mediacms.io'
+echo 'Creating python virtualenv on ${INSTALLATION_DIR}'
 
-cd /home/mediacms.io
+mkdir $INSTALLATION_DIR
+cd $INSTALLATION_DIR
 virtualenv . --python=python3
-source  /home/mediacms.io/bin/activate
+source  $INSTALLATION_DIR/bin/activate
 cd mediacms
 pip install -r requirements.txt
 
@@ -88,7 +95,7 @@ echo "from users.models import User; User.objects.create_superuser('admin', 'adm
 
 echo "from django.contrib.sites.models import Site; Site.objects.update(name='$FRONTEND_HOST', domain='$FRONTEND_HOST')" | python manage.py shell
 
-chown -R www-data. /home/mediacms.io/
+chown -R www-data. $INSTALLATION_DIR
 cp deploy/local_install/celery_long.service /etc/systemd/system/celery_long.service && systemctl enable celery_long && systemctl start celery_long
 cp deploy/local_install/celery_short.service /etc/systemd/system/celery_short.service && systemctl enable celery_short && systemctl start celery_short
 cp deploy/local_install/celery_beat.service /etc/systemd/system/celery_beat.service && systemctl enable celery_beat &&systemctl start celery_beat
@@ -135,12 +142,12 @@ fi
 
 # Bento4 utility installation, for HLS
 
-cd /home/mediacms.io/mediacms
+cd $INSTALLATION_DIR/mediacms
 wget http://zebulon.bok.net/Bento4/binaries/Bento4-SDK-1-6-0-637.x86_64-unknown-linux.zip
 unzip Bento4-SDK-1-6-0-637.x86_64-unknown-linux.zip
-mkdir /home/mediacms.io/mediacms/media_files/hls
+mkdir $INSTALLATION_DIR/mediacms/media_files/hls
 
 # last, set default owner
-chown -R www-data. /home/mediacms.io/
+chown -R www-data. $INSTALLATION_DIR
 
 echo 'MediaCMS installation completed, open browser on http://'"$FRONTEND_HOST"' and login with user admin and password '"$ADMIN_PASS"''
